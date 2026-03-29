@@ -1,0 +1,18 @@
+[
+  {
+    "ma_sv": "2421642",
+    "ho_ten": "Trần Quang Thành",
+    "gioi_tinh": "Nam",
+    "ngay_sinh": "2222222",
+    "khoa": "khmt",
+    "gpa": 10.0
+  },
+  {
+    "ma_sv": "24521632",
+    "ho_ten": "Nguyễn Nhật Thành",
+    "gioi_tinh": "Nam",
+    "ngay_sinh": "22222213",
+    "khoa": "khmt",
+    "gpa": 10.0
+  }
+]
