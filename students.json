@@ -16,27 +16,59 @@
     "gpa": 9.0
   },
   {
-    "ma_sv": "SV003",
-    "ho_ten": "Le Thiện",
-    "gioi_tinh": "Nam",
-    "ngay_sinh": "2006",
-    "khoa": "KHMT",
-    "gpa": 10.0
-  },
-  {
-    "ma_sv": "SV004",
-    "ho_ten": "Quang Luân",
-    "gioi_tinh": "Nam",
-    "ngay_sinh": "2006",
-    "khoa": "KHMT",
-    "gpa": 10.0
-  },
-  {
     "ma_sv": "SV005",
     "ho_ten": "Trần Quang Thành",
     "gioi_tinh": "Nam",
     "ngay_sinh": "2006",
     "khoa": "KTPM",
+    "gpa": 9.0
+  },
+  {
+    "ma_sv": "SV006",
+    "ho_ten": "Lê Bảo",
+    "gioi_tinh": "Nam",
+    "ngay_sinh": "2006",
+    "khoa": "KHMT",
+    "gpa": 8.0
+  },
+  {
+    "ma_sv": "SV004",
+    "ho_ten": "Trần Dũng",
+    "gioi_tinh": "Nam",
+    "ngay_sinh": "2006",
+    "khoa": "KHMT",
+    "gpa": 9.0
+  },
+  {
+    "ma_sv": "SV003",
+    "ho_ten": "Nguyễn Thị Đào",
+    "gioi_tinh": "Nam",
+    "ngay_sinh": "2006",
+    "khoa": "KHMT",
+    "gpa": 9.0
+  },
+  {
+    "ma_sv": "SV007",
+    "ho_ten": "Trần  Văn Thành",
+    "gioi_tinh": "Nam",
+    "ngay_sinh": "2006",
+    "khoa": "KHMT",
+    "gpa": 9.0
+  },
+  {
+    "ma_sv": "SV008",
+    "ho_ten": "Nguyễn Lê Bảo",
+    "gioi_tinh": "Nam",
+    "ngay_sinh": "2006",
+    "khoa": "KTPM",
+    "gpa": 8.0
+  },
+  {
+    "ma_sv": "SV009",
+    "ho_ten": "Bùi Thị Nga",
+    "gioi_tinh": "Nữ",
+    "ngay_sinh": "2006",
+    "khoa": "CNPM",
     "gpa": 9.0
   }
 ]

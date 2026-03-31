@@ -308,6 +308,7 @@ class App(ctk.CTk):
                     tree_hoten_before, s.ho_ten.lower(), tree_hoten_after),
                     self._draw_static_both()]
             )
+            self._clear_add_form()
 
     def _on_delete(self):
         if self.viz_masv.is_animating():

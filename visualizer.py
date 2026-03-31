@@ -101,6 +101,10 @@ class AnimatedTreeVisualizer:
             steps.append((hl,
                            f"⚠ Node [{self._keys_str(leaf)}] đầy (2 keys) → cần TÁCH NODE!",
                            900))
+            m_key = leaf.keys[1][0]
+            target_pos = self._get_key_pos(tree_after, m_key)
+            self._animate_key_move(m_key, target_pos[0], target_pos[1], duration=800)
+            steps.append(({}, f"↑ Đẩy '{m_key}' lên node cha và cân bằng lại cây", 1000, tree_after))
 
         # 3. Hiện cây sau insert, highlight node mới + node cha nếu có split
         result = tree_after.search(key)
@@ -309,28 +313,34 @@ class AnimatedTreeVisualizer:
         for i, (key, _) in enumerate(node.keys):
             kx0 = x0 + i * (NODE_W + 2)
             kx1 = kx0 + NODE_W
+            item_tag = f"key_{key}"
             c.create_rectangle(kx0, y0, kx1, y1,
-                                fill=fill, outline=border, width=bw)
+                               fill=fill, outline=border, width=bw,
+                               tags=(item_tag, "node_shape", f"node_{id(node)}"))
             # Glow border nếu đang active
             if state and state not in ("faded",):
                 c.create_rectangle(kx0-2, y0-2, kx1+2, y1+2,
-                                   outline=border, width=1, fill="")
+                                   outline=border, width=1, fill="",
+                                   tags=(item_tag, "glow", f"node_{id(node)}"))
 
             disp = str(key)[:10] + ("…" if len(str(key)) > 10 else "")
             c.create_text((kx0+kx1)/2, cy,
                           text=disp, fill=text_c,
-                          font=("Consolas", 10, "bold"))
+                          font=("Consolas", 10, "bold"),
+                          tags=(item_tag, "node_text", f"node_{id(node)}"))
 
         # Separator
         for i in range(1, n):
             sx = x0 + i*(NODE_W+2) - 1
-            c.create_line(sx, y0+4, sx, y1-4, fill=border, width=1)
+            c.create_line(sx, y0+4, sx, y1-4, fill=border, width=1,
+                          tags=(f"node_{id(node)}", "separator"))
 
         # ROOT label
         if is_root:
             c.create_text(cx, y0-11, text="ROOT",
                           fill=C["root_border"],
-                          font=("Consolas", 8, "bold"))
+                          font=("Consolas", 8, "bold"),
+                          tags=(f"node_{id(node)}", "root_label"))
 
         # State badge
         badge = {"traverse":"duyệt","insert":"✦ mới","delete":"✕ xóa",
@@ -338,8 +348,58 @@ class AnimatedTreeVisualizer:
                  "borrow":"mượn","merge":"gộp"}.get(state, "")
         if badge:
             c.create_text(cx, y1+12, text=badge,
-                          fill=border, font=("Consolas", 8))
+                          fill=border, font=("Consolas", 8),
+                          tags=(f"node_{id(node)}", "badge"))
+            
+    def _animate_key_move(self, key, target_x, target_y, duration=600):
+        """Di chuyển mượt mà tất cả thành phần có tag 'key_XXX' tới tọa độ mới"""
+        tag = f"key_{key}"
+        steps = 30  # Số khung hình cho hiệu ứng mượt
+        delay = int(duration / steps)
+        
+        # Lấy tọa độ hiện tại (bbox trả về: x1, y1, x2, y2)
+        curr_box = self.canvas.bbox(tag)
+        if not curr_box: return
+        
+        curr_x = (curr_box[0] + curr_box[2]) / 2
+        curr_y = (curr_box[1] + curr_box[3]) / 2
+        
+        dx = (target_x - curr_x) / steps
+        dy = (target_y - curr_y) / steps
 
+        def move_step(count):
+            if count < steps:
+                self.canvas.move(tag, dx, dy)
+                # Đưa đối tượng lên trên cùng khi đang di chuyển
+                self.canvas.tag_raise(tag) 
+                self.canvas.after(delay, lambda: move_step(count + 1))
+        
+        move_step(0)
+
+    def _get_key_pos(self, btree, target_key):
+        """Tính toán tọa độ (x, y) mà target_key sẽ nằm ở đó trong cấu trúc btree hiện tại."""
+        # Tạm thời tính toán lại toàn bộ vị trí nhưng không vẽ
+        self._positions = {}
+        self._leaf_count_cache = {}
+        w = max(self.canvas.winfo_width(), 600)
+        self._place(btree.root, PAD_X, w - PAD_X, 52)
+        
+        # Tìm node chứa key đó
+        levels = btree.get_all_nodes_by_level()
+        for lvl in levels:
+            for node in levels[lvl]:
+                for i, (k, _) in enumerate(node.keys):
+                    if k == target_key:
+                        # Lấy tọa độ node
+                        cx, cy = self._positions[id(node)]
+                        # Tính tọa độ chính xác của ô chứa key trong node
+                        n = len(node.keys)
+                        total_w = n * NODE_W + (n-1) * 2
+                        x0 = cx - total_w / 2
+                        kx = x0 + i * (NODE_W + 2) + NODE_W / 2
+                        return (kx, cy)
+        return (300, 300) # Mặc định nếu không thấy
+    
     def _resolve_colors(self, state, is_root):
         m = {
             "traverse":  (C["traverse"], "#2d1f4e", C["node_text"], 2.5),

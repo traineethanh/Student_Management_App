@@ -5,7 +5,6 @@ Mô hình dữ liệu Sinh Viên + Database quản lý bảng gốc và 2 index 
 """
 import json, os
 from btree import BTree
-from trie import Trie
 
 
 class Student:
@@ -37,7 +36,7 @@ class StudentDB:
     def __init__(self):
         self.table:       dict[str, Student] = {}
         self.index_masv  = BTree()
-        self.index_hoten = Trie()
+        self.index_hoten = BTree()
         self._load()
 
     def _load(self):
