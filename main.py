@@ -363,24 +363,38 @@ class App(ctk.CTk):
     def _on_search_masv(self):
         if self.viz_masv.is_animating():
             self._log("⏳ Đang animation...", "warn"); return
+            
         ma_sv = self.e_sm.get().strip().upper()
         if not ma_sv:
+            self._refresh_table() # Nếu để trống thì hiện lại tất cả
             return
-        found = self.db.find_by_masv(ma_sv) is not None
+            
+        # Tìm sinh viên trong database
+        student = self.db.table.get(ma_sv)
+        found = student is not None
+        
+        # Chạy animation trên cây B-Tree
         self.viz_masv.animate_search(self.db.index_masv, ma_sv, found)
 
         if found:
-            s = self.db.table.get(ma_sv)
+            # HIỆN KẾT QUẢ TRÊN BẢNG (Giống tìm theo tên)
+            self._refresh_table([student]) 
+            
+            # Cập nhật nhãn kết quả
             self.lbl_result.configure(
-                text=f"✅ {s.ho_ten} | {s.khoa} | GPA {s.gpa}", text_color=ACCENT2)
+                text=f"✅ Tìm thấy: {student.ho_ten}", 
+                text_color=ACCENT2
+            )
+            
+            # Vẫn giữ tính năng tô đậm để làm nổi bật
             try:
                 self.tbl.selection_set(ma_sv)
-                self.tbl.see(ma_sv)
-            except Exception:
-                pass
+            except: pass
         else:
             self.lbl_result.configure(
-                text=f"❌ Không tìm thấy: {ma_sv}", text_color=DANGER)
+                text=f"❌ Không tìm thấy Mã SV: {ma_sv}", 
+                text_color=DANGER
+            )
 
     def _on_search_hoten(self):
         if self.viz_hoten.is_animating():

@@ -78,5 +78,13 @@
     "ngay_sinh": "2008",
     "khoa": "KTPM",
     "gpa": 9.0
+  },
+  {
+    "ma_sv": "SV011",
+    "ho_ten": "Trịnh Hưng Tuấn",
+    "gioi_tinh": "Nam",
+    "ngay_sinh": "2006",
+    "khoa": "CNTT",
+    "gpa": 8.0
   }
 ]

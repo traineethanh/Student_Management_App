@@ -24,10 +24,10 @@ C = {
     "faded":        "#2d3748",
 }
 
-NODE_W = 80
-NODE_H = 34
-V_GAP  = 72
-PAD_X  = 60
+NODE_W = 60
+NODE_H = 28
+V_GAP  = 60
+PAD_X  = 40
 
 
 class AnimatedTreeVisualizer:
@@ -43,6 +43,9 @@ class AnimatedTreeVisualizer:
         self.canvas.bind("<MouseWheel>", self._on_canvas_wheel)
         self.canvas.bind("<Button-4>", self._on_canvas_wheel)
         self.canvas.bind("<Button-5>", self._on_canvas_wheel)
+        self.tooltip = None
+        self.canvas.bind("<Motion>", self._on_mouse_move)
+        self.canvas.bind("<Leave>", lambda e: self._hide_tooltip())
 
     # ════════════════════════════════════════════════
     #  PUBLIC
@@ -80,6 +83,49 @@ class AnimatedTreeVisualizer:
             self.canvas.yview_scroll(-1, "units")
         elif event.num == 5 or event.delta < 0:
             self.canvas.yview_scroll(1, "units")
+
+    def _on_mouse_move(self, event):
+        if self._animating: 
+            self._hide_tooltip()
+            return
+
+        # QUAN TRỌNG: Chuyển đổi tọa độ chuột sang tọa độ thực của Canvas
+        # giúp Tooltip không bị lệch khi bạn đã cuộn thanh cuộn (Scroll)
+        canvas_x = self.canvas.canvasx(event.x)
+        canvas_y = self.canvas.canvasy(event.y)
+
+        # Tìm item gần nhất với tọa độ đã được chuẩn hóa
+        # 'halo=5' giúp việc nhận diện nhạy hơn khi chuột ở gần biên node
+        item = self.canvas.find_closest(canvas_x, canvas_y, halo=5)
+        tags = self.canvas.gettags(item)
+        
+        key_tag = [t for t in tags if t.startswith("key_")]
+        
+        if key_tag:
+            full_name = key_tag[0].replace("key_", "")
+            # Hiện Tooltip tại đúng vị trí chuột trên màn hình (event.x/y)
+            # nhưng dùng thông tin từ item tại canvas_x/y
+            self._show_tooltip(canvas_x, canvas_y, full_name)
+        else:
+            self._hide_tooltip()
+
+    def _show_tooltip(self, x, y, text):
+        self._hide_tooltip()
+        
+        # Tính toán độ rộng của hộp dựa trên độ dài chữ
+        text_w = len(text) * 8 + 10
+        
+        # Vẽ tooltip (dùng tọa độ x, y đã chuẩn hóa)
+        self.canvas.create_rectangle(x + 15, y + 15, x + 15 + text_w, y + 38, 
+                                     fill="#fef08a", outline="#ca8a04", 
+                                     width=1, tags="tooltip")
+        
+        self.canvas.create_text(x + 20, y + 27, text=text, anchor="w",
+                                fill="#854d0e", font=("Segoe UI", 9, "bold"), 
+                                tags="tooltip")
+
+    def _hide_tooltip(self):
+        self.canvas.delete("tooltip")
 
     def stop(self):
         self._cancel()
@@ -269,8 +315,8 @@ class AnimatedTreeVisualizer:
 
         bbox = c.bbox("all")
         if bbox:
-            c.configure(scrollregion=(bbox[0]-50, bbox[1]-50,
-                                      bbox[2]+50, bbox[3]+50))
+            self.canvas.configure(scrollregion=(bbox[0]-150, bbox[1]-100,
+                                              bbox[2]+150, bbox[3]+100))
 
     def _calc_positions(self):
         if not self._btree:
@@ -292,14 +338,24 @@ class AnimatedTreeVisualizer:
         return result
 
     def _place(self, node, x_min, x_max, y):
+        # TÍNH TOÁN CHIỀU RỘNG TỐI THIỂU CẦN THIẾT
+        # Mỗi node lá cần ít nhất (NODE_W + 40px) để không dính nhau
+        min_spacing = NODE_W + 40 
+        required_width = self._leaf_count(node) * min_spacing
+        
+        # Nếu không gian được cấp (x_max - x_min) quá nhỏ, hãy mở rộng nó ra
+        if (x_max - x_min) < required_width:
+            x_max = x_min + required_width
+
         cx = (x_min + x_max) / 2
         self._positions[id(node)] = (cx, y)
+
         if not node.leaf and node.children:
             total_leaves = self._leaf_count(node)
             x_cursor = x_min
             for child in node.children:
                 child_leaves = self._leaf_count(child)
-                # Chia không gian tỉ lệ với số lá của từng subtree
+                # Chia không gian tỉ lệ nhưng đảm bảo x_max đã được mở rộng ở trên
                 child_width = (x_max - x_min) * child_leaves / total_leaves
                 self._place(child, x_cursor, x_cursor + child_width,
                             y + NODE_H + V_GAP)
@@ -333,11 +389,12 @@ class AnimatedTreeVisualizer:
                                    outline=border, width=1, fill="",
                                    tags=(item_tag, "glow", f"node_{id(node)}"))
 
-            disp = str(key)[:10] + ("…" if len(str(key)) > 10 else "")
+            full_name = str(key)
+            disp = (full_name[:6] + "..") if len(full_name) > 8 else full_name
             c.create_text((kx0+kx1)/2, cy,
                           text=disp, fill=text_c,
                           font=("Consolas", 10, "bold"),
-                          tags=(item_tag, "node_text", f"node_{id(node)}"))
+                          tags=(item_tag, "node_text", f"node_{id(node)}", "label"))
 
         # Separator
         for i in range(1, n):
@@ -388,27 +445,26 @@ class AnimatedTreeVisualizer:
 
     def _get_key_pos(self, btree, target_key):
         """Tính toán tọa độ (x, y) mà target_key sẽ nằm ở đó trong cấu trúc btree hiện tại."""
-        # Tạm thời tính toán lại toàn bộ vị trí nhưng không vẽ
         self._positions = {}
         self._leaf_count_cache = {}
-        w = max(self.canvas.winfo_width(), 600)
+        min_spacing = NODE_W + 40
+        total_w = self._leaf_count(btree.root) * min_spacing
+        w = max(self.canvas.winfo_width(), total_w + 2 * PAD_X)
+        
         self._place(btree.root, PAD_X, w - PAD_X, 52)
         
-        # Tìm node chứa key đó
+        # (Phần tìm key bên dưới giữ nguyên...)
         levels = btree.get_all_nodes_by_level()
         for lvl in levels:
             for node in levels[lvl]:
                 for i, (k, _) in enumerate(node.keys):
                     if k == target_key:
-                        # Lấy tọa độ node
                         cx, cy = self._positions[id(node)]
-                        # Tính tọa độ chính xác của ô chứa key trong node
-                        n = len(node.keys)
-                        total_w = n * NODE_W + (n-1) * 2
-                        x0 = cx - total_w / 2
+                        total_w_node = len(node.keys) * NODE_W + (len(node.keys)-1) * 2
+                        x0 = cx - total_w_node / 2
                         kx = x0 + i * (NODE_W + 2) + NODE_W / 2
                         return (kx, cy)
-        return (300, 300) # Mặc định nếu không thấy
+        return (400, 300)
     
     def _resolve_colors(self, state, is_root):
         m = {
