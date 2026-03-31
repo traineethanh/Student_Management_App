@@ -1,82 +1,93 @@
 """
 Ứng dụng Quản Lý Sinh Viên
-Giao diện: CustomTkinter
-Index:      B-Tree bậc 3
+Giao diện: CustomTkinter  |  Index: B-Tree bậc 3  |  Animation: từng bước
 """
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
+import copy
 import customtkinter as ctk
 from database import StudentDB, Student
-from visualizer import TreeVisualizer
+from visualizer import AnimatedTreeVisualizer
+from btree import BTree
 
-# ── THEME ────────────────────────────────────────────────────────────────────
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-DARK_BG    = "#0f172a"
-PANEL_BG   = "#1e293b"
-CARD_BG    = "#1e2a3a"
-ACCENT     = "#3b82f6"
-ACCENT2    = "#22c55e"
-DANGER     = "#ef4444"
-TEXT       = "#e2e8f0"
-TEXT2      = "#94a3b8"
-BORDER     = "#334155"
+DARK_BG  = "#0f172a"
+PANEL_BG = "#1e293b"
+CARD_BG  = "#1e2a3a"
+ACCENT   = "#3b82f6"
+ACCENT2  = "#22c55e"
+DANGER   = "#ef4444"
+TEXT     = "#e2e8f0"
+TEXT2    = "#94a3b8"
+BORDER   = "#334155"
+
+
+def clone_btree(src: BTree) -> BTree:
+    """Tạo bản sao B-Tree từ danh sách keys hiện tại."""
+    return copy.deepcopy(src)
+
+def _collect(node):
+    if node.leaf:
+        return list(node.keys)
+    result = []
+    for i, child in enumerate(node.children):
+        result.extend(_collect(child))
+        if i < len(node.keys):
+            result.append(node.keys[i])
+    return result
 
 
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("Quản Lý Sinh Viên  ·  B-Tree Index")
-        self.geometry("1300x780")
+        self.title("Quản Lý Sinh Viên  ·  B-Tree Index  ·  Animation")
+        self.geometry("1340x800")
         self.minsize(1100, 680)
         self.configure(fg_color=DARK_BG)
 
         self.db = StudentDB()
         self._build_ui()
         self._refresh_table()
-        self._refresh_trees()
+        self._draw_static_both()
 
     # ════════════════════════════════════════════════
-    #   BUILD UI
+    #  BUILD UI
     # ════════════════════════════════════════════════
     def _build_ui(self):
-        # ── Header ──────────────────────────────────
-        hdr = ctk.CTkFrame(self, fg_color=PANEL_BG, height=56, corner_radius=0)
-        hdr.pack(fill="x", side="top")
+        # Header
+        hdr = ctk.CTkFrame(self, fg_color=PANEL_BG, height=54, corner_radius=0)
+        hdr.pack(fill="x")
         hdr.pack_propagate(False)
-
-        ctk.CTkLabel(hdr, text="🎓  Quản Lý Sinh Viên",
-                     font=ctk.CTkFont("Segoe UI", 20, "bold"),
-                     text_color=TEXT).pack(side="left", padx=24, pady=12)
-
+        ctk.CTkLabel(hdr, text="🎓  Quản Lý Sinh Viên  —  B-Tree Bậc 3",
+                     font=ctk.CTkFont("Segoe UI", 19, "bold"),
+                     text_color=TEXT).pack(side="left", padx=22, pady=12)
         self.lbl_count = ctk.CTkLabel(hdr, text="0 sinh viên",
-                                      font=ctk.CTkFont("Segoe UI", 13),
-                                      text_color=TEXT2)
-        self.lbl_count.pack(side="right", padx=24)
+                                       font=ctk.CTkFont("Segoe UI", 12),
+                                       text_color=TEXT2)
+        self.lbl_count.pack(side="right", padx=22)
 
-        # ── Main body (left panel + right panel) ────
         body = ctk.CTkFrame(self, fg_color=DARK_BG)
-        body.pack(fill="both", expand=True, padx=10, pady=8)
+        body.pack(fill="both", expand=True, padx=8, pady=6)
         body.columnconfigure(0, weight=3)
-        body.columnconfigure(1, weight=4)
+        body.columnconfigure(1, weight=5)
         body.rowconfigure(0, weight=1)
 
         self._build_left(body)
         self._build_right(body)
 
-    # ── LEFT PANEL ──────────────────────────────────
+    # ── LEFT ────────────────────────────────────────
     def _build_left(self, parent):
         left = ctk.CTkFrame(parent, fg_color=PANEL_BG, corner_radius=12)
-        left.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        left.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
         left.rowconfigure(1, weight=1)
         left.columnconfigure(0, weight=1)
 
-        # --- Tabs: Thêm / Xóa / Tìm
         tab = ctk.CTkTabview(left, fg_color=CARD_BG,
                              segmented_button_fg_color=PANEL_BG,
                              segmented_button_selected_color=ACCENT)
-        tab.pack(fill="x", padx=12, pady=(12, 4))
+        tab.pack(fill="x", padx=10, pady=(10, 4))
         tab.add("➕ Thêm")
         tab.add("🗑 Xóa")
         tab.add("🔍 Tìm")
@@ -85,351 +96,328 @@ class App(ctk.CTk):
         self._build_tab_delete(tab.tab("🗑 Xóa"))
         self._build_tab_search(tab.tab("🔍 Tìm"))
 
-        # --- Bảng sinh viên
+        # Bảng gốc
         tbl_frame = ctk.CTkFrame(left, fg_color=CARD_BG, corner_radius=10)
-        tbl_frame.pack(fill="both", expand=True, padx=12, pady=(4, 12))
-
+        tbl_frame.pack(fill="both", expand=True, padx=10, pady=(4, 10))
         ctk.CTkLabel(tbl_frame, text="📋  Bảng Dữ Liệu Gốc",
-                     font=ctk.CTkFont("Segoe UI", 13, "bold"),
-                     text_color=TEXT).pack(anchor="w", padx=12, pady=(10, 4))
+                     font=ctk.CTkFont("Segoe UI", 12, "bold"),
+                     text_color=TEXT).pack(anchor="w", padx=10, pady=(8, 2))
 
-        cols = ("Mã SV", "Họ và Tên", "Giới tính", "Ngày sinh", "Khoa", "GPA")
+        cols = ("Mã SV","Họ và Tên","Giới tính","Ngày sinh","Khoa","GPA")
         style = ttk.Style()
         style.theme_use("clam")
-        style.configure("Dark.Treeview",
+        style.configure("D.Treeview",
                         background=CARD_BG, foreground=TEXT,
-                        fieldbackground=CARD_BG, rowheight=28,
-                        font=("Segoe UI", 11))
-        style.configure("Dark.Treeview.Heading",
+                        fieldbackground=CARD_BG, rowheight=26,
+                        font=("Segoe UI", 10))
+        style.configure("D.Treeview.Heading",
                         background=PANEL_BG, foreground=TEXT2,
-                        font=("Segoe UI", 10, "bold"), relief="flat")
-        style.map("Dark.Treeview", background=[("selected", ACCENT)])
+                        font=("Segoe UI", 9, "bold"), relief="flat")
+        style.map("D.Treeview", background=[("selected", ACCENT)])
 
-        tree_wrap = tk.Frame(tbl_frame, bg=CARD_BG)
-        tree_wrap.pack(fill="both", expand=True, padx=8, pady=(0, 8))
-
-        vsb = ttk.Scrollbar(tree_wrap, orient="vertical")
+        wrap = tk.Frame(tbl_frame, bg=CARD_BG)
+        wrap.pack(fill="both", expand=True, padx=6, pady=(0,6))
+        vsb = ttk.Scrollbar(wrap, orient="vertical")
         vsb.pack(side="right", fill="y")
-        hsb = ttk.Scrollbar(tree_wrap, orient="horizontal")
+        hsb = ttk.Scrollbar(wrap, orient="horizontal")
         hsb.pack(side="bottom", fill="x")
-
-        self.tree_tbl = ttk.Treeview(tree_wrap, columns=cols, show="headings",
-                                     style="Dark.Treeview",
-                                     yscrollcommand=vsb.set,
-                                     xscrollcommand=hsb.set)
-        vsb.config(command=self.tree_tbl.yview)
-        hsb.config(command=self.tree_tbl.xview)
-        self.tree_tbl.pack(fill="both", expand=True)
-
-        widths = [80, 150, 80, 90, 120, 50]
-        for col, w in zip(cols, widths):
-            self.tree_tbl.heading(col, text=col)
-            self.tree_tbl.column(col, width=w, anchor="center")
+        self.tbl = ttk.Treeview(wrap, columns=cols, show="headings",
+                                style="D.Treeview",
+                                yscrollcommand=vsb.set,
+                                xscrollcommand=hsb.set)
+        vsb.config(command=self.tbl.yview)
+        hsb.config(command=self.tbl.xview)
+        self.tbl.pack(fill="both", expand=True)
+        for col, w in zip(cols, [75,145,70,85,110,45]):
+            self.tbl.heading(col, text=col)
+            self.tbl.column(col, width=w, anchor="center")
 
     def _build_tab_add(self, parent):
         fields = [
-            ("Mã SV *",    "entry_masv"),
-            ("Họ và Tên *","entry_hoten"),
-            ("Giới tính",  "entry_gioitinh"),
-            ("Ngày sinh",  "entry_ngaysinh"),
-            ("Khoa",       "entry_khoa"),
-            ("GPA",        "entry_gpa"),
+            ("Mã SV *",    "e_masv"),
+            ("Họ và Tên *","e_hoten"),
+            ("Giới tính",  "e_gt"),
+            ("Ngày sinh",  "e_ns"),
+            ("Khoa",       "e_khoa"),
+            ("GPA",        "e_gpa"),
         ]
-        for label, attr in fields:
+        for lbl, attr in fields:
             row = ctk.CTkFrame(parent, fg_color="transparent")
             row.pack(fill="x", pady=2)
-            ctk.CTkLabel(row, text=label, width=100, anchor="w",
-                         font=ctk.CTkFont("Segoe UI", 12),
+            ctk.CTkLabel(row, text=lbl, width=96, anchor="w",
+                         font=ctk.CTkFont("Segoe UI", 11),
                          text_color=TEXT2).pack(side="left")
-            entry = ctk.CTkEntry(row, height=30,
-                                 fg_color=PANEL_BG, border_color=BORDER,
-                                 text_color=TEXT)
-            entry.pack(side="left", fill="x", expand=True)
-            setattr(self, attr, entry)
+            e = ctk.CTkEntry(row, height=28,
+                             fg_color=PANEL_BG, border_color=BORDER,
+                             text_color=TEXT)
+            e.pack(side="left", fill="x", expand=True)
+            setattr(self, attr, e)
 
-        # Combobox cho giới tính
-        self.entry_gioitinh.destroy()
+        # Giới tính dùng combobox
+        self.e_gt.destroy()
         row_gt = parent.winfo_children()[2]
-        self.entry_gioitinh = ctk.CTkComboBox(
-            row_gt, values=["Nam", "Nữ", "Khác"],
-            fg_color=PANEL_BG, border_color=BORDER, text_color=TEXT,
-            button_color=ACCENT, height=30)
-        self.entry_gioitinh.set("Nam")
-        self.entry_gioitinh.pack(side="left", fill="x", expand=True)
+        self.e_gt = ctk.CTkComboBox(row_gt, values=["Nam","Nữ","Khác"],
+                                    fg_color=PANEL_BG, border_color=BORDER,
+                                    text_color=TEXT, button_color=ACCENT, height=28)
+        self.e_gt.set("Nam")
+        self.e_gt.pack(side="left", fill="x", expand=True)
 
-        btn = ctk.CTkButton(parent, text="➕  Thêm Sinh Viên",
-                            fg_color=ACCENT2, hover_color="#16a34a",
-                            font=ctk.CTkFont("Segoe UI", 13, "bold"),
-                            height=36, command=self._on_add)
-        btn.pack(fill="x", pady=(8, 4))
+        ctk.CTkButton(parent, text="➕  Thêm Sinh Viên",
+                      fg_color=ACCENT2, hover_color="#16a34a",
+                      font=ctk.CTkFont("Segoe UI", 12, "bold"),
+                      height=34, command=self._on_add).pack(fill="x", pady=(8,2))
 
     def _build_tab_delete(self, parent):
         ctk.CTkLabel(parent, text="Nhập Mã SV cần xóa:",
-                     text_color=TEXT2, font=ctk.CTkFont("Segoe UI", 12)
-                     ).pack(anchor="w", pady=(8, 2))
-        self.entry_del = ctk.CTkEntry(parent, height=34,
-                                      fg_color=PANEL_BG, border_color=BORDER,
-                                      text_color=TEXT,
-                                      placeholder_text="Ví dụ: SV001")
-        self.entry_del.pack(fill="x", pady=4)
-
-        btn = ctk.CTkButton(parent, text="🗑  Xóa Sinh Viên",
-                            fg_color=DANGER, hover_color="#b91c1c",
-                            font=ctk.CTkFont("Segoe UI", 13, "bold"),
-                            height=36, command=self._on_delete)
-        btn.pack(fill="x", pady=(8, 4))
+                     text_color=TEXT2, font=ctk.CTkFont("Segoe UI", 11)
+                     ).pack(anchor="w", pady=(8,2))
+        self.e_del = ctk.CTkEntry(parent, height=32,
+                                  fg_color=PANEL_BG, border_color=BORDER,
+                                  text_color=TEXT, placeholder_text="VD: SV001")
+        self.e_del.pack(fill="x", pady=4)
+        ctk.CTkButton(parent, text="🗑  Xóa Sinh Viên",
+                      fg_color=DANGER, hover_color="#b91c1c",
+                      font=ctk.CTkFont("Segoe UI", 12, "bold"),
+                      height=34, command=self._on_delete).pack(fill="x", pady=(8,2))
 
     def _build_tab_search(self, parent):
         ctk.CTkLabel(parent, text="Tìm theo Mã SV:",
-                     text_color=TEXT2, font=ctk.CTkFont("Segoe UI", 12)
-                     ).pack(anchor="w", pady=(8, 2))
-        row1 = ctk.CTkFrame(parent, fg_color="transparent")
-        row1.pack(fill="x")
-        self.entry_search_masv = ctk.CTkEntry(
-            row1, height=32, fg_color=PANEL_BG, border_color=BORDER,
-            text_color=TEXT, placeholder_text="Mã SV chính xác")
-        self.entry_search_masv.pack(side="left", fill="x", expand=True, padx=(0, 6))
-        ctk.CTkButton(row1, text="Tìm", width=60, height=32,
-                      fg_color=ACCENT, command=self._on_search_masv
-                      ).pack(side="left")
+                     text_color=TEXT2, font=ctk.CTkFont("Segoe UI", 11)
+                     ).pack(anchor="w", pady=(8,2))
+        r1 = ctk.CTkFrame(parent, fg_color="transparent")
+        r1.pack(fill="x")
+        self.e_sm = ctk.CTkEntry(r1, height=30, fg_color=PANEL_BG,
+                                 border_color=BORDER, text_color=TEXT,
+                                 placeholder_text="Mã SV chính xác")
+        self.e_sm.pack(side="left", fill="x", expand=True, padx=(0,4))
+        ctk.CTkButton(r1, text="Tìm", width=56, height=30,
+                      fg_color=ACCENT, command=self._on_search_masv).pack(side="left")
 
         ctk.CTkLabel(parent, text="Tìm theo Họ Tên (tiền tố):",
-                     text_color=TEXT2, font=ctk.CTkFont("Segoe UI", 12)
-                     ).pack(anchor="w", pady=(10, 2))
-        row2 = ctk.CTkFrame(parent, fg_color="transparent")
-        row2.pack(fill="x")
-        self.entry_search_hoten = ctk.CTkEntry(
-            row2, height=32, fg_color=PANEL_BG, border_color=BORDER,
-            text_color=TEXT, placeholder_text="Họ tên hoặc tiền tố...")
-        self.entry_search_hoten.pack(side="left", fill="x", expand=True, padx=(0, 6))
-        ctk.CTkButton(row2, text="Tìm", width=60, height=32,
-                      fg_color=ACCENT, command=self._on_search_hoten
-                      ).pack(side="left")
+                     text_color=TEXT2, font=ctk.CTkFont("Segoe UI", 11)
+                     ).pack(anchor="w", pady=(10,2))
+        r2 = ctk.CTkFrame(parent, fg_color="transparent")
+        r2.pack(fill="x")
+        self.e_sh = ctk.CTkEntry(r2, height=30, fg_color=PANEL_BG,
+                                 border_color=BORDER, text_color=TEXT,
+                                 placeholder_text="Họ tên hoặc tiền tố...")
+        self.e_sh.pack(side="left", fill="x", expand=True, padx=(0,4))
+        ctk.CTkButton(r2, text="Tìm", width=56, height=30,
+                      fg_color=ACCENT, command=self._on_search_hoten).pack(side="left")
 
-        ctk.CTkButton(parent, text="↺  Hiện tất cả", height=30,
+        ctk.CTkButton(parent, text="↺  Hiện tất cả", height=28,
                       fg_color=PANEL_BG, hover_color=BORDER,
                       text_color=TEXT2, command=self._clear_search
-                      ).pack(fill="x", pady=(10, 0))
+                      ).pack(fill="x", pady=(8,0))
+        self.lbl_result = ctk.CTkLabel(parent, text="", text_color=ACCENT2,
+                                       font=ctk.CTkFont("Segoe UI", 10),
+                                       wraplength=250)
+        self.lbl_result.pack(anchor="w", pady=(6,0))
 
-        # Kết quả tìm
-        self.lbl_result = ctk.CTkLabel(parent, text="",
-                                       text_color=ACCENT2,
-                                       font=ctk.CTkFont("Segoe UI", 11),
-                                       wraplength=260)
-        self.lbl_result.pack(anchor="w", pady=(8, 0))
-
-    # ── RIGHT PANEL ─────────────────────────────────
+    # ── RIGHT ───────────────────────────────────────
     def _build_right(self, parent):
         right = ctk.CTkFrame(parent, fg_color=PANEL_BG, corner_radius=12)
-        right.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
-        right.rowconfigure(1, weight=1)
-        right.rowconfigure(3, weight=1)
+        right.grid(row=0, column=1, sticky="nsew", padx=(5,0))
+        right.rowconfigure(2, weight=1)
+        right.rowconfigure(4, weight=1)
         right.columnconfigure(0, weight=1)
 
-        # --- Log / status bar
+        # Log bar
         self.lbl_log = ctk.CTkLabel(right, text="Sẵn sàng.",
                                     fg_color=CARD_BG, corner_radius=6,
                                     text_color=TEXT2,
                                     font=ctk.CTkFont("Consolas", 11),
                                     anchor="w", padx=10)
-        self.lbl_log.pack(fill="x", padx=12, pady=(10, 6))
+        self.lbl_log.pack(fill="x", padx=10, pady=(10,4))
 
-        # --- Index Mã SV
-        ctk.CTkLabel(right,
-                     text="🌲  Index B-Tree theo Mã SV  (bậc 3)",
-                     font=ctk.CTkFont("Segoe UI", 12, "bold"),
-                     text_color=TEXT).pack(anchor="w", padx=14, pady=(4, 2))
+        # Animation step label
+        self.lbl_step = ctk.CTkLabel(right, text="",
+                                     fg_color="transparent",
+                                     text_color="#a78bfa",
+                                     font=ctk.CTkFont("Consolas", 11),
+                                     anchor="w", padx=10, wraplength=640)
+        self.lbl_step.pack(fill="x", padx=10, pady=(0,4))
 
-        canvas_frame1 = tk.Frame(right, bg="#0f172a", bd=0)
-        canvas_frame1.pack(fill="both", expand=True, padx=12, pady=(0, 6))
+        # Canvas Mã SV
+        ctk.CTkLabel(right, text="🌲  Index B-Tree — Mã SV  (bậc 3)",
+                     font=ctk.CTkFont("Segoe UI", 11, "bold"),
+                     text_color=TEXT).pack(anchor="w", padx=12, pady=(2,1))
+        cf1 = tk.Frame(right, bg="#0f172a")
+        cf1.pack(fill="both", expand=True, padx=10, pady=(0,4))
+        self.cv_masv = tk.Canvas(cf1, bg="#0f172a", highlightthickness=0)
+        sb1v = ttk.Scrollbar(cf1, orient="vertical",   command=self.cv_masv.yview)
+        sb1h = ttk.Scrollbar(cf1, orient="horizontal", command=self.cv_masv.xview)
+        self.cv_masv.configure(yscrollcommand=sb1v.set, xscrollcommand=sb1h.set)
+        sb1v.pack(side="right", fill="y"); sb1h.pack(side="bottom", fill="x")
+        self.cv_masv.pack(fill="both", expand=True)
+        self.viz_masv = AnimatedTreeVisualizer(self.cv_masv, self.lbl_step)
 
-        self.canvas_masv = tk.Canvas(canvas_frame1, bg="#0f172a",
-                                     highlightthickness=0)
-        vsb1 = ttk.Scrollbar(canvas_frame1, orient="vertical",
-                              command=self.canvas_masv.yview)
-        hsb1 = ttk.Scrollbar(canvas_frame1, orient="horizontal",
-                              command=self.canvas_masv.xview)
-        self.canvas_masv.configure(yscrollcommand=vsb1.set,
-                                   xscrollcommand=hsb1.set)
-        vsb1.pack(side="right", fill="y")
-        hsb1.pack(side="bottom", fill="x")
-        self.canvas_masv.pack(fill="both", expand=True)
-        self.viz_masv = TreeVisualizer(self.canvas_masv)
-
-        # --- Index Họ Tên
-        ctk.CTkLabel(right,
-                     text="🌲  Index B-Tree theo Họ Tên  (bậc 3)",
-                     font=ctk.CTkFont("Segoe UI", 12, "bold"),
-                     text_color=TEXT).pack(anchor="w", padx=14, pady=(2, 2))
-
-        canvas_frame2 = tk.Frame(right, bg="#0f172a", bd=0)
-        canvas_frame2.pack(fill="both", expand=True, padx=12, pady=(0, 12))
-
-        self.canvas_hoten = tk.Canvas(canvas_frame2, bg="#0f172a",
-                                      highlightthickness=0)
-        vsb2 = ttk.Scrollbar(canvas_frame2, orient="vertical",
-                              command=self.canvas_hoten.yview)
-        hsb2 = ttk.Scrollbar(canvas_frame2, orient="horizontal",
-                              command=self.canvas_hoten.xview)
-        self.canvas_hoten.configure(yscrollcommand=vsb2.set,
-                                    xscrollcommand=hsb2.set)
-        vsb2.pack(side="right", fill="y")
-        hsb2.pack(side="bottom", fill="x")
-        self.canvas_hoten.pack(fill="both", expand=True)
-        self.viz_hoten = TreeVisualizer(self.canvas_hoten)
+        # Canvas Họ Tên
+        ctk.CTkLabel(right, text="🌲  Index B-Tree — Họ Tên  (bậc 3)",
+                     font=ctk.CTkFont("Segoe UI", 11, "bold"),
+                     text_color=TEXT).pack(anchor="w", padx=12, pady=(2,1))
+        cf2 = tk.Frame(right, bg="#0f172a")
+        cf2.pack(fill="both", expand=True, padx=10, pady=(0,10))
+        self.cv_hoten = tk.Canvas(cf2, bg="#0f172a", highlightthickness=0)
+        sb2v = ttk.Scrollbar(cf2, orient="vertical",   command=self.cv_hoten.yview)
+        sb2h = ttk.Scrollbar(cf2, orient="horizontal", command=self.cv_hoten.xview)
+        self.cv_hoten.configure(yscrollcommand=sb2v.set, xscrollcommand=sb2h.set)
+        sb2v.pack(side="right", fill="y"); sb2h.pack(side="bottom", fill="x")
+        self.cv_hoten.pack(fill="both", expand=True)
+        self.viz_hoten = AnimatedTreeVisualizer(self.cv_hoten)
 
     # ════════════════════════════════════════════════
-    #   ACTIONS
+    #  ACTIONS
     # ════════════════════════════════════════════════
     def _on_add(self):
-        ma_sv     = self.entry_masv.get().strip()
-        ho_ten    = self.entry_hoten.get().strip()
-        gioitinh  = self.entry_gioitinh.get().strip()
-        ngaysinh  = self.entry_ngaysinh.get().strip()
-        khoa      = self.entry_khoa.get().strip()
-        gpa_str   = self.entry_gpa.get().strip()
-
-        try:
-            gpa = float(gpa_str) if gpa_str else 0.0
-        except ValueError:
-            self._log("⚠  GPA phải là số!", "warn")
+        if self.viz_masv.is_animating():
+            self._log("⏳ Đang animation, vui lòng chờ...", "warn")
             return
 
-        s = Student(ma_sv, ho_ten, gioitinh, ngaysinh, khoa, gpa)
+        ma_sv   = self.e_masv.get().strip()
+        ho_ten  = self.e_hoten.get().strip()
+        gt      = self.e_gt.get().strip()
+        ns      = self.e_ns.get().strip()
+        khoa    = self.e_khoa.get().strip()
+        gpa_s   = self.e_gpa.get().strip()
+        try:
+            gpa = float(gpa_s) if gpa_s else 0.0
+        except ValueError:
+            self._log("⚠ GPA phải là số!", "warn"); return
+
+        # Clone cây TRƯỚC khi thêm
+        tree_masv_before  = clone_btree(self.db.index_masv)
+        tree_hoten_before = clone_btree(self.db.index_hoten)
+
+        s = Student(ma_sv, ho_ten, gt, ns, khoa, gpa)
         ok, msg = self.db.add(s)
         self._log(("✅  " if ok else "❌  ") + msg, "ok" if ok else "err")
 
         if ok:
             self._clear_add_form()
             self._refresh_table()
-            # Highlight node vừa thêm
-            result_masv = self.db.index_masv.search(ma_sv)
-            result_hoten = self.db.index_hoten.search(ho_ten.lower())
-            hl_masv  = [id(result_masv[0])]  if result_masv  else []
-            hl_hoten = [id(result_hoten[0])] if result_hoten else []
-            self.viz_masv.set_highlight(hl_masv, "highlight_add")
-            self.viz_hoten.set_highlight(hl_hoten, "highlight_add")
-            self._refresh_trees()
-            self.after(1500, self._clear_hl)
+
+            # Cây SAU khi thêm
+            tree_masv_after  = self.db.index_masv
+            tree_hoten_after = self.db.index_hoten
+
+            # Animation cây Mã SV
+            self.viz_masv.animate_insert(
+                tree_masv_before, s.ma_sv, tree_masv_after,
+                on_done=lambda: [self.viz_hoten.animate_insert(
+                    tree_hoten_before, s.ho_ten.lower(), tree_hoten_after),
+                    self._draw_static_both()]
+            )
 
     def _on_delete(self):
-        ma_sv = self.entry_del.get().strip().upper()
-        if not ma_sv:
-            self._log("⚠  Vui lòng nhập Mã SV cần xóa!", "warn")
-            return
+        if self.viz_masv.is_animating():
+            self._log("⏳ Đang animation, vui lòng chờ...", "warn"); return
 
-        # Lấy họ tên trước khi xóa (để tìm node trên cây họ tên)
+        ma_sv = self.e_del.get().strip().upper()
+        if not ma_sv:
+            self._log("⚠ Vui lòng nhập Mã SV!", "warn"); return
+
         student = self.db.find_by_masv(ma_sv)
         ho_ten_lower = student.ho_ten.lower() if student else None
+
+        # Clone trước
+        tree_masv_before  = clone_btree(self.db.index_masv)
+        tree_hoten_before = clone_btree(self.db.index_hoten)
 
         ok, msg = self.db.delete(ma_sv)
         self._log(("✅  " if ok else "❌  ") + msg, "ok" if ok else "err")
 
         if ok:
-            self.entry_del.delete(0, "end")
+            self.e_del.delete(0, "end")
             self._refresh_table()
-            self._refresh_trees()
+
+            tree_masv_after  = self.db.index_masv
+            tree_hoten_after = self.db.index_hoten
+
+            self.viz_masv.animate_delete(
+                tree_masv_before, ma_sv, tree_masv_after,
+                on_done=lambda: (
+                    self.viz_hoten.animate_delete(
+                        tree_hoten_before,
+                        ho_ten_lower or "",
+                        tree_hoten_after
+                    ) if ho_ten_lower else None
+                )
+            )
 
     def _on_search_masv(self):
-        ma_sv = self.entry_search_masv.get().strip().upper()
+        if self.viz_masv.is_animating():
+            self._log("⏳ Đang animation...", "warn"); return
+        ma_sv = self.e_sm.get().strip().upper()
         if not ma_sv:
             return
-        result = self.db.index_masv.search(ma_sv)
-        if result:
-            node, _ = result
-            self.viz_masv.set_highlight([id(node)], "highlight_found")
-            self.viz_hoten.clear_highlight()
-            self._refresh_trees()
+        found = self.db.find_by_masv(ma_sv) is not None
+        self.viz_masv.animate_search(self.db.index_masv, ma_sv, found)
+
+        if found:
             s = self.db.table.get(ma_sv)
             self.lbl_result.configure(
-                text=f"✅ Tìm thấy: {s.ho_ten} | {s.khoa} | GPA {s.gpa}",
-                text_color=ACCENT2)
-            self._highlight_row(ma_sv)
+                text=f"✅ {s.ho_ten} | {s.khoa} | GPA {s.gpa}", text_color=ACCENT2)
+            try:
+                self.tbl.selection_set(ma_sv)
+                self.tbl.see(ma_sv)
+            except Exception:
+                pass
         else:
-            self.viz_masv.clear_highlight()
-            self._refresh_trees()
             self.lbl_result.configure(
-                text=f"❌ Không tìm thấy Mã SV: {ma_sv}", text_color=DANGER)
-        self._log(f"🔍 Tìm Mã SV '{ma_sv}': {'Thấy' if result else 'Không thấy'}")
-        self.after(2000, self._clear_hl)
+                text=f"❌ Không tìm thấy: {ma_sv}", text_color=DANGER)
 
     def _on_search_hoten(self):
-        keyword = self.entry_search_hoten.get().strip()
+        if self.viz_hoten.is_animating():
+            self._log("⏳ Đang animation...", "warn"); return
+        keyword = self.e_sh.get().strip()
         if not keyword:
             return
         results = self.db.find_by_hoten(keyword)
-        if results:
-            # Highlight tất cả node khớp trên cây họ tên
-            node_ids = []
-            for s in results:
-                r = self.db.index_hoten.search(s.ho_ten.lower())
-                if r:
-                    node_ids.append(id(r[0]))
-            self.viz_hoten.set_highlight(node_ids, "highlight_found")
-            self.viz_masv.clear_highlight()
-            self._refresh_trees()
-            names = ", ".join(s.ho_ten for s in results[:5])
+        found = len(results) > 0
+        self.viz_hoten.animate_search(self.db.index_hoten, keyword.lower(), found)
+        if found:
             self.lbl_result.configure(
-                text=f"✅ {len(results)} kết quả: {names}{'...' if len(results)>5 else ''}",
+                text=f"✅ {len(results)} kết quả: {', '.join(s.ho_ten for s in results[:4])}",
                 text_color=ACCENT2)
             self._refresh_table(results)
         else:
-            self.viz_hoten.clear_highlight()
-            self._refresh_trees()
             self.lbl_result.configure(
-                text=f"❌ Không tìm thấy họ tên: '{keyword}'", text_color=DANGER)
-        self._log(f"🔍 Tìm họ tên '{keyword}': {len(results)} kết quả")
-        self.after(2500, self._clear_hl)
+                text=f"❌ Không tìm thấy: '{keyword}'", text_color=DANGER)
 
     def _clear_search(self):
         self.lbl_result.configure(text="")
-        self.viz_masv.clear_highlight()
-        self.viz_hoten.clear_highlight()
         self._refresh_table()
-        self._refresh_trees()
+        self._draw_static_both()
 
     # ════════════════════════════════════════════════
-    #   REFRESH
+    #  HELPERS
     # ════════════════════════════════════════════════
     def _refresh_table(self, students=None):
-        for row in self.tree_tbl.get_children():
-            self.tree_tbl.delete(row)
-        data = students if students is not None else self.db.all_students()
+        for row in self.tbl.get_children():
+            self.tbl.delete(row)
+        data = students or self.db.all_students()
         for s in data:
-            self.tree_tbl.insert("", "end", iid=s.ma_sv,
-                                 values=(s.ma_sv, s.ho_ten, s.gioi_tinh,
-                                         s.ngay_sinh, s.khoa, s.gpa))
+            self.tbl.insert("", "end", iid=s.ma_sv,
+                            values=(s.ma_sv, s.ho_ten, s.gioi_tinh,
+                                    s.ngay_sinh, s.khoa, s.gpa))
         self.lbl_count.configure(text=f"{self.db.count()} sinh viên")
 
-    def _refresh_trees(self):
+    def _draw_static_both(self):
         self.update_idletasks()
-        self.viz_masv.draw(self.db.index_masv)
-        self.viz_hoten.draw(self.db.index_hoten)
-
-    def _highlight_row(self, ma_sv):
-        try:
-            self.tree_tbl.selection_set(ma_sv)
-            self.tree_tbl.see(ma_sv)
-        except Exception:
-            pass
-
-    def _clear_hl(self):
-        self.viz_masv.clear_highlight()
-        self.viz_hoten.clear_highlight()
-        self._refresh_trees()
+        self.viz_masv.draw_static(self.db.index_masv)
+        self.viz_hoten.draw_static(self.db.index_hoten)
 
     def _clear_add_form(self):
-        for attr in ("entry_masv", "entry_hoten", "entry_ngaysinh",
-                     "entry_khoa", "entry_gpa"):
-            getattr(self, attr).delete(0, "end")
-        self.entry_gioitinh.set("Nam")
+        for a in ("e_masv","e_hoten","e_ns","e_khoa","e_gpa"):
+            getattr(self, a).delete(0, "end")
+        self.e_gt.set("Nam")
 
     def _log(self, msg, kind="info"):
         colors = {"ok": ACCENT2, "err": DANGER, "warn": "#f59e0b", "info": TEXT2}
         self.lbl_log.configure(text=msg, text_color=colors.get(kind, TEXT2))
 
 
-# ════════════════════════════════════════════════════
 if __name__ == "__main__":
     app = App()
     app.mainloop()

@@ -1,30 +1,31 @@
 """
-B-Tree bậc 3 (order = 3):
-  - Mỗi node tối đa 2 keys, tối đa 3 children
-  - Mỗi node (trừ root) tối thiểu 1 key
+B-Tree bậc 3 (Order = 3 = max children per node):
+  - max_keys = 2  (order - 1)
+  - min_keys = 1  (ceil(order/2) - 1)
+  - Chiến lược: insert-then-fix (cho node tràn 3 keys rồi split)
+    đảm bảo sau split: left=1 key, up=1 key, right=1 key.
 """
 
 
 class BTreeNode:
     def __init__(self, leaf=True):
-        self.keys = []        # list of (key_value, student_id)
-        self.children = []    # list of BTreeNode
-        self.leaf = leaf
+        self.keys     = []   # list of (key_str, sid_str)
+        self.children = []   # list of BTreeNode
+        self.leaf     = leaf
 
     def __repr__(self):
-        return f"Node(keys={[k for k,_ in self.keys]}, leaf={self.leaf})"
+        return "[" + " | ".join(k for k, _ in self.keys) + "]"
 
 
 class BTree:
-    ORDER = 3          # bậc cây
+    ORDER    = 3
     MAX_KEYS = ORDER - 1   # = 2
-    MIN_KEYS = 1
 
     def __init__(self):
         self.root = BTreeNode(leaf=True)
 
-    # ── SEARCH ──────────────────────────────────────
-    def search(self, key, node=None):
+    # ── SEARCH ───────────────────────────────────────────────────────────────
+    def search(self, key: str, node=None):
         """Trả về (node, index) nếu tìm thấy, else None."""
         if node is None:
             node = self.root
@@ -37,68 +38,106 @@ class BTree:
             return None
         return self.search(key, node.children[i])
 
-    def search_prefix(self, prefix, node=None, results=None):
-        """Tìm tất cả keys có giá trị bắt đầu bằng prefix."""
-        if results is None:
-            results = []
-        if node is None:
-            node = self.root
-        for key, sid in node.keys:
-            if str(key).lower().startswith(prefix.lower()):
-                results.append((key, sid))
+    def search_prefix(self, prefix: str, node=None, results=None):
+        if results is None: results = []
+        if node is None: node = self.root
+        
+        prefix = prefix.lower()
+        i = 0
+        # Tìm vị trí bắt đầu có khả năng chứa prefix
+        while i < len(node.keys) and node.keys[i][0].lower() < prefix:
+            i += 1
+            
+        # Duyệt các key và con từ vị trí i
+        for j in range(i, len(node.keys)):
+            # Nếu key hiện tại bắt đầu bằng prefix -> thêm vào kết quả
+            if node.keys[j][0].lower().startswith(prefix):
+                results.append(node.keys[j])
+            
+            # Nếu key hiện tại đã lớn hơn prefix và không bắt đầu bằng prefix 
+            # thì không cần duyệt các nhánh bên phải nữa (Tối ưu)
+            elif node.keys[j][0].lower() > prefix:
+                if not node.leaf:
+                    self.search_prefix(prefix, node.children[j], results)
+                return results
+
+        # Duyệt các nhánh con có khả năng
         if not node.leaf:
-            for child in node.children:
-                self.search_prefix(prefix, child, results)
+            for k in range(i, len(node.children)):
+                self.search_prefix(prefix, node.children[k], results)
         return results
 
-    # ── INSERT ──────────────────────────────────────
-    def insert(self, key, student_id):
-        root = self.root
-        if len(root.keys) == self.MAX_KEYS:
+    # ── INSERT ───────────────────────────────────────────────────────────────
+    def insert(self, key: str, sid: str = ""):
+        """
+        Chèn key vào cây. Dùng chiến lược insert-then-fix:
+        1. Chèn key vào đúng vị trí trong lá (có thể làm tràn lên 3 keys).
+        2. Sau đó fix overflow từ dưới lên trên (bottom-up).
+        """
+        # Chèn thẳng vào lá
+        new_mid = self._insert_leaf(self.root, key, sid)
+
+        # Nếu root bị tràn -> tạo root mới
+        if new_mid is not None:
+            mid_key, right_child = new_mid
             new_root = BTreeNode(leaf=False)
-            new_root.children.append(self.root)
-            self._split_child(new_root, 0)
+            new_root.keys = [mid_key]
+            new_root.children = [self.root, right_child]
             self.root = new_root
-        self._insert_non_full(self.root, key, student_id)
 
-    def _insert_non_full(self, node, key, student_id):
-        i = len(node.keys) - 1
-        if node.leaf:
-            node.keys.append(None)
-            while i >= 0 and key < node.keys[i][0]:
-                node.keys[i + 1] = node.keys[i]
-                i -= 1
-            node.keys[i + 1] = (key, student_id)
-        else:
-            while i >= 0 and key < node.keys[i][0]:
-                i -= 1
+    def _insert_leaf(self, node, key, sid):
+        """
+        Đệ quy chèn key vào lá phù hợp.
+        Trả về (mid_key, right_node) nếu node bị overflow, else None.
+        """
+        i = 0
+        while i < len(node.keys) and key > node.keys[i][0]:
             i += 1
-            if len(node.children[i].keys) == self.MAX_KEYS:
-                self._split_child(node, i)
-                if key > node.keys[i][0]:
-                    i += 1
-            self._insert_non_full(node.children[i], key, student_id)
 
-    def _split_child(self, parent, i):
-        child = parent.children[i]
-        mid = len(child.keys) // 2  # = 1
+        if node.leaf:
+            # Chèn thẳng vào lá
+            node.keys.insert(i, (key, sid))
+            # Kiểm tra overflow
+            if len(node.keys) > self.MAX_KEYS:
+                return self._split_node(node)
+            return None
+        else:
+            # Đệ quy xuống con
+            overflow = self._insert_leaf(node.children[i], key, sid)
+            if overflow is not None:
+                mid_key, right_child = overflow
+                # Chèn mid_key vào node hiện tại
+                node.keys.insert(i, mid_key)
+                node.children.insert(i + 1, right_child)
+                # Kiểm tra overflow
+                if len(node.keys) > self.MAX_KEYS:
+                    return self._split_node(node)
+            return None
 
-        new_node = BTreeNode(leaf=child.leaf)
-        mid_key = child.keys[mid]
+    def _split_node(self, node):
+        """
+        Node đang có MAX_KEYS+1 = 3 keys (overflow).
+        Tách thành: left (1 key) | mid_key (lên cha) | right (1 key).
+        Trả về (mid_key_tuple, right_node).
+        """
+        mid = len(node.keys) // 2   # = 1  (index của key giữa)
 
-        new_node.keys = child.keys[mid + 1:]
-        child.keys = child.keys[:mid]
+        mid_key = node.keys[mid]
 
-        if not child.leaf:
-            new_node.children = child.children[mid + 1:]
-            child.children = child.children[:mid + 1]
+        right = BTreeNode(leaf=node.leaf)
+        right.keys = node.keys[mid + 1:]   # keys bên phải mid
+        node.keys  = node.keys[:mid]        # keys bên trái mid (left giữ lại)
 
-        parent.keys.insert(i, mid_key)
-        parent.children.insert(i + 1, new_node)
+        if not node.leaf:
+            right.children = node.children[mid + 1:]
+            node.children  = node.children[:mid + 1]
 
-    # ── DELETE ──────────────────────────────────────
-    def delete(self, key):
+        return (mid_key, right)
+
+    # ── DELETE ───────────────────────────────────────────────────────────────
+    def delete(self, key: str):
         self._delete(self.root, key)
+        # Nếu root trở thành rỗng và có con -> con trở thành root mới
         if len(self.root.keys) == 0 and not self.root.leaf:
             self.root = self.root.children[0]
 
@@ -111,70 +150,68 @@ class BTree:
             if node.leaf:
                 node.keys.pop(i)
             else:
-                pred = self._get_predecessor(node, i)
+                pred = self._predecessor(node.children[i])
                 node.keys[i] = pred
                 self._delete(node.children[i], pred[0])
+                # SỬA TẠI ĐÂY: Phải fix child thứ i
+                self._fix_underflow(node, i) 
         else:
-            if node.leaf:
-                return
-            self._ensure_child(node, i)
-            if i > len(node.keys):
-                i -= 1
+            if node.leaf: return
             self._delete(node.children[i], key)
+            self._fix_underflow(node, i)
 
-    def _get_predecessor(self, node, i):
-        cur = node.children[i]
-        while not cur.leaf:
-            cur = cur.children[-1]
-        return cur.keys[-1]
+    def _predecessor(self, node):
+        """Tìm key lớn nhất trong subtree (phần tử ngoài cùng bên phải)."""
+        while not node.leaf:
+            node = node.children[-1]
+        return node.keys[-1]
 
-    def _ensure_child(self, node, i):
-        child = node.children[i]
-        if len(child.keys) > self.MIN_KEYS:
+    def _fix_underflow(self, parent, i):
+        """Sửa underflow tại parent.children[i] nếu có."""
+        child = parent.children[i]
+        if len(child.keys) >= 1:   # MIN_KEYS = 1
             return
-        if i > 0 and len(node.children[i - 1].keys) > self.MIN_KEYS:
-            self._borrow_from_prev(node, i)
-        elif i < len(node.children) - 1 and len(node.children[i + 1].keys) > self.MIN_KEYS:
-            self._borrow_from_next(node, i)
-        else:
-            if i < len(node.children) - 1:
-                self._merge(node, i)
-            else:
-                self._merge(node, i - 1)
 
-    def _borrow_from_prev(self, node, i):
-        child = node.children[i]
-        sibling = node.children[i - 1]
-        child.keys.insert(0, node.keys[i - 1])
-        node.keys[i - 1] = sibling.keys.pop()
-        if not sibling.leaf:
-            child.children.insert(0, sibling.children.pop())
+        left_sib  = parent.children[i - 1] if i > 0 else None
+        right_sib = parent.children[i + 1] if i < len(parent.children) - 1 else None
 
-    def _borrow_from_next(self, node, i):
-        child = node.children[i]
-        sibling = node.children[i + 1]
-        child.keys.append(node.keys[i])
-        node.keys[i] = sibling.keys.pop(0)
-        if not sibling.leaf:
-            child.children.append(sibling.children.pop(0))
+        if left_sib and len(left_sib.keys) > 1:
+            # Mượn từ anh em trái
+            child.keys.insert(0, parent.keys[i - 1])
+            parent.keys[i - 1] = left_sib.keys.pop()
+            if not left_sib.leaf:
+                child.children.insert(0, left_sib.children.pop())
 
-    def _merge(self, node, i):
-        child = node.children[i]
-        sibling = node.children[i + 1]
-        mid_key = node.keys.pop(i)
-        child.keys.append(mid_key)
-        child.keys.extend(sibling.keys)
-        if not child.leaf:
-            child.children.extend(sibling.children)
-        node.children.pop(i + 1)
+        elif right_sib and len(right_sib.keys) > 1:
+            # Mượn từ anh em phải
+            child.keys.append(parent.keys[i])
+            parent.keys[i] = right_sib.keys.pop(0)
+            if not right_sib.leaf:
+                child.children.append(right_sib.children.pop(0))
 
-    # ── TRAVERSAL ───────────────────────────────────
+        elif left_sib:
+            # Merge child vào left_sib
+            left_sib.keys.append(parent.keys.pop(i - 1))
+            left_sib.keys.extend(child.keys)
+            if not child.leaf:
+                left_sib.children.extend(child.children)
+            parent.children.pop(i)
+
+        elif right_sib:
+            # Merge right_sib vào child
+            child.keys.append(parent.keys.pop(i))
+            child.keys.extend(right_sib.keys)
+            if not right_sib.leaf:
+                child.children.extend(right_sib.children)
+            parent.children.pop(i + 1)
+
+    # ── UTILITY ──────────────────────────────────────────────────────────────
     def inorder(self, node=None):
         if node is None:
             node = self.root
-        result = []
         if node.leaf:
             return [k for k, _ in node.keys]
+        result = []
         for i, child in enumerate(node.children):
             result.extend(self.inorder(child))
             if i < len(node.keys):

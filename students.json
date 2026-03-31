@@ -1,18 +1,42 @@
 [
   {
-    "ma_sv": "2421642",
+    "ma_sv": "SV001",
     "ho_ten": "Trần Quang Thành",
     "gioi_tinh": "Nam",
-    "ngay_sinh": "2222222",
-    "khoa": "khmt",
+    "ngay_sinh": "2006",
+    "khoa": "KHMT",
+    "gpa": 9.0
+  },
+  {
+    "ma_sv": "SV002",
+    "ho_ten": "Nguyễn Nhật Thành",
+    "gioi_tinh": "Nam",
+    "ngay_sinh": "2006",
+    "khoa": "KHMT",
+    "gpa": 9.0
+  },
+  {
+    "ma_sv": "SV003",
+    "ho_ten": "Le Thiện",
+    "gioi_tinh": "Nam",
+    "ngay_sinh": "2006",
+    "khoa": "KHMT",
     "gpa": 10.0
   },
   {
-    "ma_sv": "24521632",
-    "ho_ten": "Nguyễn Nhật Thành",
+    "ma_sv": "SV004",
+    "ho_ten": "Quang Luân",
     "gioi_tinh": "Nam",
-    "ngay_sinh": "22222213",
-    "khoa": "khmt",
+    "ngay_sinh": "2006",
+    "khoa": "KHMT",
     "gpa": 10.0
+  },
+  {
+    "ma_sv": "SV005",
+    "ho_ten": "Trần Quang Thành",
+    "gioi_tinh": "Nam",
+    "ngay_sinh": "2006",
+    "khoa": "KTPM",
+    "gpa": 9.0
   }
 ]
