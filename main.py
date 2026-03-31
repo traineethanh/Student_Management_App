@@ -52,9 +52,8 @@ class App(ctk.CTk):
         self._refresh_table()
         self._draw_static_both()
 
-    # ════════════════════════════════════════════════
     #  BUILD UI
-    # ════════════════════════════════════════════════
+
     def _build_ui(self):
         # Header
         hdr = ctk.CTkFrame(self, fg_color=PANEL_BG, height=54, corner_radius=0)
@@ -70,8 +69,8 @@ class App(ctk.CTk):
 
         body = ctk.CTkFrame(self, fg_color=DARK_BG)
         body.pack(fill="both", expand=True, padx=8, pady=6)
-        body.columnconfigure(0, weight=3)
-        body.columnconfigure(1, weight=5)
+        body.columnconfigure(0, weight=2)
+        body.columnconfigure(1, weight=8)
         body.rowconfigure(0, weight=1)
 
         self._build_left(body)
@@ -103,7 +102,7 @@ class App(ctk.CTk):
                      font=ctk.CTkFont("Segoe UI", 12, "bold"),
                      text_color=TEXT).pack(anchor="w", padx=10, pady=(8, 2))
 
-        cols = ("Mã SV","Họ và Tên","Giới tính","Ngày sinh","Khoa","GPA")
+        cols = ("Mã SV","Họ và Tên","Giới tính","Năm sinh","Khoa","GPA")
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("D.Treeview",
@@ -125,6 +124,20 @@ class App(ctk.CTk):
                                 style="D.Treeview",
                                 yscrollcommand=vsb.set,
                                 xscrollcommand=hsb.set)
+        
+        def _on_treeview_wheel(event):
+            # Windows: event.delta / -120
+            # Linux: Button-4 (lên), Button-5 (xuống)
+            if event.num == 4 or event.delta > 0:
+                self.tbl.yview_scroll(-1, "units")
+            elif event.num == 5 or event.delta < 0:
+                self.tbl.yview_scroll(1, "units")
+
+        # Bind cho Windows và MacOS/Linux
+        self.tbl.bind("<MouseWheel>", _on_treeview_wheel)
+        self.tbl.bind("<Button-4>", _on_treeview_wheel)
+        self.tbl.bind("<Button-5>", _on_treeview_wheel)
+
         vsb.config(command=self.tbl.yview)
         hsb.config(command=self.tbl.xview)
         self.tbl.pack(fill="both", expand=True)
@@ -137,7 +150,7 @@ class App(ctk.CTk):
             ("Mã SV *",    "e_masv"),
             ("Họ và Tên *","e_hoten"),
             ("Giới tính",  "e_gt"),
-            ("Ngày sinh",  "e_ns"),
+            ("Năm sinh",  "e_ns"),
             ("Khoa",       "e_khoa"),
             ("GPA",        "e_gpa"),
         ]
@@ -158,7 +171,8 @@ class App(ctk.CTk):
         row_gt = parent.winfo_children()[2]
         self.e_gt = ctk.CTkComboBox(row_gt, values=["Nam","Nữ","Khác"],
                                     fg_color=PANEL_BG, border_color=BORDER,
-                                    text_color=TEXT, button_color=ACCENT, height=28)
+                                    text_color=TEXT, button_color=ACCENT,
+                                    height=28, state="readonly")
         self.e_gt.set("Nam")
         self.e_gt.pack(side="left", fill="x", expand=True)
 
@@ -218,7 +232,7 @@ class App(ctk.CTk):
     def _build_right(self, parent):
         right = ctk.CTkFrame(parent, fg_color=PANEL_BG, corner_radius=12)
         right.grid(row=0, column=1, sticky="nsew", padx=(5,0))
-        right.rowconfigure(2, weight=1)
+        right.rowconfigure(2, weight=2)
         right.rowconfigure(4, weight=1)
         right.columnconfigure(0, weight=1)
 
@@ -228,7 +242,7 @@ class App(ctk.CTk):
                                     text_color=TEXT2,
                                     font=ctk.CTkFont("Consolas", 11),
                                     anchor="w", padx=10)
-        self.lbl_log.pack(fill="x", padx=10, pady=(10,4))
+        self.lbl_log.pack(fill="x", padx=10, pady=(5,2))
 
         # Animation step label
         self.lbl_step = ctk.CTkLabel(right, text="",
@@ -236,7 +250,7 @@ class App(ctk.CTk):
                                      text_color="#a78bfa",
                                      font=ctk.CTkFont("Consolas", 11),
                                      anchor="w", padx=10, wraplength=640)
-        self.lbl_step.pack(fill="x", padx=10, pady=(0,4))
+        self.lbl_step.pack(fill="x", padx=10, pady=(0,2))
 
         # Canvas Mã SV
         ctk.CTkLabel(right, text="🌲  Index B-Tree — Mã SV  (bậc 3)",

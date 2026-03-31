@@ -24,10 +24,10 @@ C = {
     "faded":        "#2d3748",
 }
 
-NODE_W = 88
+NODE_W = 80
 NODE_H = 34
 V_GAP  = 72
-PAD_X  = 50
+PAD_X  = 60
 
 
 class AnimatedTreeVisualizer:
@@ -40,6 +40,9 @@ class AnimatedTreeVisualizer:
         self._after_id   = None
         self._animating  = False
         self.canvas.bind("<Configure>", lambda e: self._redraw())
+        self.canvas.bind("<MouseWheel>", self._on_canvas_wheel)
+        self.canvas.bind("<Button-4>", self._on_canvas_wheel)
+        self.canvas.bind("<Button-5>", self._on_canvas_wheel)
 
     # ════════════════════════════════════════════════
     #  PUBLIC
@@ -70,6 +73,13 @@ class AnimatedTreeVisualizer:
 
     def is_animating(self):
         return self._animating
+    
+    def _on_canvas_wheel(self, event):
+        # Lăn dọc
+        if event.num == 4 or event.delta > 0:
+            self.canvas.yview_scroll(-1, "units")
+        elif event.num == 5 or event.delta < 0:
+            self.canvas.yview_scroll(1, "units")
 
     def stop(self):
         self._cancel()
@@ -259,8 +269,8 @@ class AnimatedTreeVisualizer:
 
         bbox = c.bbox("all")
         if bbox:
-            c.configure(scrollregion=(bbox[0]-20, bbox[1]-20,
-                                      bbox[2]+20, bbox[3]+20))
+            c.configure(scrollregion=(bbox[0]-50, bbox[1]-50,
+                                      bbox[2]+50, bbox[3]+50))
 
     def _calc_positions(self):
         if not self._btree:

@@ -70,5 +70,13 @@
     "ngay_sinh": "2006",
     "khoa": "CNPM",
     "gpa": 9.0
+  },
+  {
+    "ma_sv": "SV010",
+    "ho_ten": "Hà Duy Tập",
+    "gioi_tinh": "Nam",
+    "ngay_sinh": "2008",
+    "khoa": "KTPM",
+    "gpa": 9.0
   }
 ]
