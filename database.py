@@ -3,9 +3,16 @@ Mô hình dữ liệu Sinh Viên + Database quản lý bảng gốc và 2 index 
   - index_masv:  key = mã SV   (vd: "SV001")
   - index_hoten: key = họ tên chữ thường (vd: "nguyen van a")
 """
-import json, os
+import json, os, sys
 from btree import BTree
 
+def resource_path(relative_path):
+    """ Lấy đường dẫn tuyệt đối đến tài nguyên, dùng cho cả lúc code và lúc chạy exe """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 class Student:
     def __init__(self, ma_sv, ho_ten, gioi_tinh, ngay_sinh, khoa, gpa=0.0):
@@ -31,7 +38,7 @@ class Student:
 
 
 class StudentDB:
-    DATA_FILE = "students.json"
+    DATA_FILE = resource_path("students.json")
 
     def __init__(self):
         self.table:       dict[str, Student] = {}
@@ -94,3 +101,4 @@ class StudentDB:
 
     def count(self):
         return len(self.table)
+    
