@@ -78,5 +78,45 @@
     "ngay_sinh": "2006",
     "khoa": "CNTT",
     "gpa": 8.0
+  },
+  {
+    "ma_sv": "SV005",
+    "ho_ten": "Đào Duy Từ",
+    "gioi_tinh": "Nam",
+    "ngay_sinh": "2006",
+    "khoa": "KHMT",
+    "gpa": 6.5
+  },
+  {
+    "ma_sv": "SV012",
+    "ho_ten": "Phạm Mạnh Luân",
+    "gioi_tinh": "Nam",
+    "ngay_sinh": "2006",
+    "khoa": "KHMT",
+    "gpa": 8.5
+  },
+  {
+    "ma_sv": "SV013",
+    "ho_ten": "Nguyễn Thị Đào",
+    "gioi_tinh": "Nữ",
+    "ngay_sinh": "2006",
+    "khoa": "KTPM",
+    "gpa": 8.0
+  },
+  {
+    "ma_sv": "SV014",
+    "ho_ten": "Phan Hà Vy",
+    "gioi_tinh": "Nữ",
+    "ngay_sinh": "2007",
+    "khoa": "CNTT",
+    "gpa": 9.0
+  },
+  {
+    "ma_sv": "SV015",
+    "ho_ten": "Nguyễn Thị Như Ý",
+    "gioi_tinh": "Nữ",
+    "ngay_sinh": "2006",
+    "khoa": "HTTT",
+    "gpa": 7.5
   }
 ]
