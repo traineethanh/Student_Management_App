@@ -9,8 +9,8 @@ B-Tree bậc 3 (Order = 3 = max children per node):
 
 class BTreeNode:
     def __init__(self, leaf=True):
-        self.keys     = []   # list of (key_str, sid_str)
-        self.children = []   # list of BTreeNode
+        self.keys     = []   
+        self.children = []   
         self.leaf     = leaf
 
     def __repr__(self):
@@ -44,18 +44,13 @@ class BTree:
         
         prefix = prefix.lower()
         i = 0
-        # Tìm vị trí bắt đầu có khả năng chứa prefix
         while i < len(node.keys) and node.keys[i][0].lower() < prefix:
             i += 1
-            
-        # Duyệt các key và con từ vị trí i
+
         for j in range(i, len(node.keys)):
             # Nếu key hiện tại bắt đầu bằng prefix -> thêm vào kết quả
             if node.keys[j][0].lower().startswith(prefix):
                 results.append(node.keys[j])
-            
-            # Nếu key hiện tại đã lớn hơn prefix và không bắt đầu bằng prefix 
-            # thì không cần duyệt các nhánh bên phải nữa (Tối ưu)
             elif node.keys[j][0].lower() > prefix:
                 if not node.leaf:
                     self.search_prefix(prefix, node.children[j], results)
@@ -120,13 +115,13 @@ class BTree:
         Tách thành: left (1 key) | mid_key (lên cha) | right (1 key).
         Trả về (mid_key_tuple, right_node).
         """
-        mid = len(node.keys) // 2   # = 1  (index của key giữa)
+        mid = len(node.keys) // 2   
 
         mid_key = node.keys[mid]
 
         right = BTreeNode(leaf=node.leaf)
-        right.keys = node.keys[mid + 1:]   # keys bên phải mid
-        node.keys  = node.keys[:mid]        # keys bên trái mid (left giữ lại)
+        right.keys = node.keys[mid + 1:]   
+        node.keys  = node.keys[:mid]        
 
         if not node.leaf:
             right.children = node.children[mid + 1:]
@@ -153,7 +148,6 @@ class BTree:
                 pred = self._predecessor(node.children[i])
                 node.keys[i] = pred
                 self._delete(node.children[i], pred[0])
-                # SỬA TẠI ĐÂY: Phải fix child thứ i
                 self._fix_underflow(node, i) 
         else:
             if node.leaf: return
@@ -169,7 +163,7 @@ class BTree:
     def _fix_underflow(self, parent, i):
         """Sửa underflow tại parent.children[i] nếu có."""
         child = parent.children[i]
-        if len(child.keys) >= 1:   # MIN_KEYS = 1
+        if len(child.keys) >= 1:   
             return
 
         left_sib  = parent.children[i - 1] if i > 0 else None

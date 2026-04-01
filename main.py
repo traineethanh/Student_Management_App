@@ -126,14 +126,11 @@ class App(ctk.CTk):
                                 xscrollcommand=hsb.set)
         
         def _on_treeview_wheel(event):
-            # Windows: event.delta / -120
-            # Linux: Button-4 (lên), Button-5 (xuống)
             if event.num == 4 or event.delta > 0:
                 self.tbl.yview_scroll(-1, "units")
             elif event.num == 5 or event.delta < 0:
                 self.tbl.yview_scroll(1, "units")
 
-        # Bind cho Windows và MacOS/Linux
         self.tbl.bind("<MouseWheel>", _on_treeview_wheel)
         self.tbl.bind("<Button-4>", _on_treeview_wheel)
         self.tbl.bind("<Button-5>", _on_treeview_wheel)
@@ -166,7 +163,6 @@ class App(ctk.CTk):
             e.pack(side="left", fill="x", expand=True)
             setattr(self, attr, e)
 
-        # Giới tính dùng combobox
         self.e_gt.destroy()
         row_gt = parent.winfo_children()[2]
         self.e_gt = ctk.CTkComboBox(row_gt, values=["Nam","Nữ","Khác"],
@@ -280,9 +276,8 @@ class App(ctk.CTk):
         self.cv_hoten.pack(fill="both", expand=True)
         self.viz_hoten = AnimatedTreeVisualizer(self.cv_hoten)
 
-    # ════════════════════════════════════════════════
     #  ACTIONS
-    # ════════════════════════════════════════════════
+
     def _on_add(self):
         if self.viz_masv.is_animating():
             self._log("⏳ Đang animation, vui lòng chờ...", "warn")
@@ -377,7 +372,7 @@ class App(ctk.CTk):
         self.viz_masv.animate_search(self.db.index_masv, ma_sv, found)
 
         if found:
-            # HIỆN KẾT QUẢ TRÊN BẢNG (Giống tìm theo tên)
+            # HIỆN KẾT QUẢ TRÊN BẢNG
             self._refresh_table([student]) 
             
             # Cập nhật nhãn kết quả
@@ -385,8 +380,6 @@ class App(ctk.CTk):
                 text=f"✅ Tìm thấy: {student.ho_ten}", 
                 text_color=ACCENT2
             )
-            
-            # Vẫn giữ tính năng tô đậm để làm nổi bật
             try:
                 self.tbl.selection_set(ma_sv)
             except: pass
@@ -419,9 +412,8 @@ class App(ctk.CTk):
         self._refresh_table()
         self._draw_static_both()
 
-    # ════════════════════════════════════════════════
     #  HELPERS
-    # ════════════════════════════════════════════════
+
     def _refresh_table(self, students=None):
         for row in self.tbl.get_children():
             self.tbl.delete(row)

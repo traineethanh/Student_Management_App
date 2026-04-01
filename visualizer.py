@@ -35,8 +35,8 @@ class AnimatedTreeVisualizer:
         self.canvas = canvas
         self.label  = label_widget
         self._btree      = None
-        self._highlights = {}        # id(node) -> state str
-        self._positions  = {}        # id(node) -> (cx, cy)
+        self._highlights = {}        
+        self._positions  = {}        
         self._after_id   = None
         self._animating  = False
         self.canvas.bind("<Configure>", lambda e: self._redraw())
@@ -47,9 +47,8 @@ class AnimatedTreeVisualizer:
         self.canvas.bind("<Motion>", self._on_mouse_move)
         self.canvas.bind("<Leave>", lambda e: self._hide_tooltip())
 
-    # ════════════════════════════════════════════════
     #  PUBLIC
-    # ════════════════════════════════════════════════
+
     def draw_static(self, btree: BTree):
         self._cancel()
         self._btree      = btree
@@ -78,7 +77,6 @@ class AnimatedTreeVisualizer:
         return self._animating
     
     def _on_canvas_wheel(self, event):
-        # Lăn dọc
         if event.num == 4 or event.delta > 0:
             self.canvas.yview_scroll(-1, "units")
         elif event.num == 5 or event.delta < 0:
@@ -88,14 +86,9 @@ class AnimatedTreeVisualizer:
         if self._animating: 
             self._hide_tooltip()
             return
-
-        # QUAN TRỌNG: Chuyển đổi tọa độ chuột sang tọa độ thực của Canvas
-        # giúp Tooltip không bị lệch khi bạn đã cuộn thanh cuộn (Scroll)
         canvas_x = self.canvas.canvasx(event.x)
         canvas_y = self.canvas.canvasy(event.y)
 
-        # Tìm item gần nhất với tọa độ đã được chuẩn hóa
-        # 'halo=5' giúp việc nhận diện nhạy hơn khi chuột ở gần biên node
         item = self.canvas.find_closest(canvas_x, canvas_y, halo=5)
         tags = self.canvas.gettags(item)
         
@@ -103,8 +96,6 @@ class AnimatedTreeVisualizer:
         
         if key_tag:
             full_name = key_tag[0].replace("key_", "")
-            # Hiện Tooltip tại đúng vị trí chuột trên màn hình (event.x/y)
-            # nhưng dùng thông tin từ item tại canvas_x/y
             self._show_tooltip(canvas_x, canvas_y, full_name)
         else:
             self._hide_tooltip()
@@ -112,10 +103,8 @@ class AnimatedTreeVisualizer:
     def _show_tooltip(self, x, y, text):
         self._hide_tooltip()
         
-        # Tính toán độ rộng của hộp dựa trên độ dài chữ
         text_w = len(text) * 8 + 10
-        
-        # Vẽ tooltip (dùng tọa độ x, y đã chuẩn hóa)
+
         self.canvas.create_rectangle(x + 15, y + 15, x + 15 + text_w, y + 38, 
                                      fill="#fef08a", outline="#ca8a04", 
                                      width=1, tags="tooltip")
@@ -130,9 +119,8 @@ class AnimatedTreeVisualizer:
     def stop(self):
         self._cancel()
 
-    # ════════════════════════════════════════════════
     #  STEP BUILDERS
-    # ════════════════════════════════════════════════
+
     def _steps_insert(self, tree_before, tree_after, key):
         steps = []
         all_before = self._all_nodes(tree_before)
@@ -232,9 +220,8 @@ class AnimatedTreeVisualizer:
         steps.append(({}, "", 500))
         return steps
 
-    # ════════════════════════════════════════════════
     #  STEP RUNNER
-    # ════════════════════════════════════════════════
+
     def _run_steps(self, tree_start, steps, tree_end, on_done):
         self._animating = True
         self._btree     = tree_start
@@ -245,7 +232,6 @@ class AnimatedTreeVisualizer:
 
         def tick():
             if idx[0] >= len(steps):
-                # Kết thúc: hiện cây cuối
                 self._btree      = tree_end
                 self._highlights = {}
                 self._redraw()
@@ -262,7 +248,6 @@ class AnimatedTreeVisualizer:
             hl  = step[0]
             lbl = step[1]
             dur = step[2]
-            # Nếu step có cây riêng (tuple 4 phần tử) → chuyển sang cây đó
             if len(step) == 4:
                 self._btree = step[3]
 
@@ -280,9 +265,8 @@ class AnimatedTreeVisualizer:
             self._after_id = None
         self._animating = False
 
-    # ════════════════════════════════════════════════
     #  DRAW
-    # ════════════════════════════════════════════════
+
     def _redraw(self):
         c = self.canvas
         c.delete("all")
@@ -338,12 +322,9 @@ class AnimatedTreeVisualizer:
         return result
 
     def _place(self, node, x_min, x_max, y):
-        # TÍNH TOÁN CHIỀU RỘNG TỐI THIỂU CẦN THIẾT
-        # Mỗi node lá cần ít nhất (NODE_W + 40px) để không dính nhau
         min_spacing = NODE_W + 40 
         required_width = self._leaf_count(node) * min_spacing
-        
-        # Nếu không gian được cấp (x_max - x_min) quá nhỏ, hãy mở rộng nó ra
+
         if (x_max - x_min) < required_width:
             x_max = x_min + required_width
 
@@ -355,7 +336,6 @@ class AnimatedTreeVisualizer:
             x_cursor = x_min
             for child in node.children:
                 child_leaves = self._leaf_count(child)
-                # Chia không gian tỉ lệ nhưng đảm bảo x_max đã được mở rộng ở trên
                 child_width = (x_max - x_min) * child_leaves / total_leaves
                 self._place(child, x_cursor, x_cursor + child_width,
                             y + NODE_H + V_GAP)
@@ -421,10 +401,9 @@ class AnimatedTreeVisualizer:
     def _animate_key_move(self, key, target_x, target_y, duration=600):
         """Di chuyển mượt mà tất cả thành phần có tag 'key_XXX' tới tọa độ mới"""
         tag = f"key_{key}"
-        steps = 30  # Số khung hình cho hiệu ứng mượt
+        steps = 30  
         delay = int(duration / steps)
-        
-        # Lấy tọa độ hiện tại (bbox trả về: x1, y1, x2, y2)
+
         curr_box = self.canvas.bbox(tag)
         if not curr_box: return
         
@@ -437,7 +416,6 @@ class AnimatedTreeVisualizer:
         def move_step(count):
             if count < steps:
                 self.canvas.move(tag, dx, dy)
-                # Đưa đối tượng lên trên cùng khi đang di chuyển
                 self.canvas.tag_raise(tag) 
                 self.canvas.after(delay, lambda: move_step(count + 1))
         
@@ -453,7 +431,6 @@ class AnimatedTreeVisualizer:
         
         self._place(btree.root, PAD_X, w - PAD_X, 52)
         
-        # (Phần tìm key bên dưới giữ nguyên...)
         levels = btree.get_all_nodes_by_level()
         for lvl in levels:
             for node in levels[lvl]:
@@ -483,9 +460,8 @@ class AnimatedTreeVisualizer:
         border = C["root_border"] if is_root else C["node_border"]
         return border, C["node_bg"], C["node_text"], 2 if is_root else 1.5
 
-    # ════════════════════════════════════════════════
     #  HELPERS
-    # ════════════════════════════════════════════════
+
     def _all_nodes(self, btree):
         return [n for lvl in btree.get_all_nodes_by_level().values() for n in lvl]
 
