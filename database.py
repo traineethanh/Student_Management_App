@@ -6,13 +6,13 @@ Mô hình dữ liệu Sinh Viên + Database quản lý bảng gốc và 2 index 
 import json, os, sys
 from btree import BTree
 
-def resource_path(relative_path):
-    """ Lấy đường dẫn tuyệt đối đến tài nguyên, dùng cho cả lúc code và lúc chạy exe """
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-    return os.path.join(base_path, relative_path)
+def get_executable_dir():
+    if getattr(sys, 'frozen', False):
+        # Nếu đang chạy từ file EXE
+        return os.path.dirname(sys.executable)
+    else:
+        # Nếu đang chạy code .py bình thường
+        return os.path.dirname(os.path.abspath(__file__))
 
 class Student:
     def __init__(self, ma_sv, ho_ten, gioi_tinh, ngay_sinh, khoa, gpa=0.0):
@@ -38,7 +38,7 @@ class Student:
 
 
 class StudentDB:
-    DATA_FILE = resource_path("students.json")
+    DATA_FILE = os.path.join(get_executable_dir(), "students.json")
 
     def __init__(self):
         self.table:       dict[str, Student] = {}
@@ -47,17 +47,20 @@ class StudentDB:
         self._load()
 
     def _load(self):
-        if os.path.exists(self.DATA_FILE) and os.path.getsize(self.DATA_FILE) > 0:
-            try:
-                with open(self.DATA_FILE, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                for d in data:
-                    s = Student.from_dict(d)
-                    self.table[s.ma_sv] = s
-                    self.index_masv.insert(s.ma_sv, s.ma_sv)
-                    self.index_hoten.insert(s.ho_ten.lower(), s.ma_sv)
-            except json.JSONDecodeError:
-                self.table = {}
+        if not os.path.exists(self.DATA_FILE):
+            with open(self.DATA_FILE, "w", encoding="utf-8") as f:
+                json.dump([], f)
+            return
+        try:
+            with open(self.DATA_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            for d in data:
+                s = Student.from_dict(d)
+                self.table[s.ma_sv] = s
+                self.index_masv.insert(s.ma_sv, s.ma_sv)
+                self.index_hoten.insert(s.ho_ten.lower(), s.ma_sv)
+        except json.JSONDecodeError:
+            self.table = {}
 
     def _save(self):
         with open(self.DATA_FILE, "w", encoding="utf-8") as f:
